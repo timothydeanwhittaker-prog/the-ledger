@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>The Ledger — Lending Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FAF7F0;
+  --paper-line:#E7E0D2;
+  --card:#FFFFFF;
+  --card-border:#E8E2D4;
+  --ink:#1F2521;
+  --ink-soft:#5B655D;
+  --ink-faint:#8B9289;
+  --forest:#1B4332;
+  --forest-soft:#DCE7DF;
+  --gold:#B8863E;
+  --gold-soft:#F3E7D2;
+  --red:#A63A2E;
+  --red-soft:#F5DFDA;
+  --radius:14px;
+  --shadow:0 1px 2px rgba(31,37,33,0.06), 0 4px 14px rgba(31,37,33,0.05);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'IBM Plex Sans',sans-serif;
+  min-height:100vh;
+  padding-bottom:78px;
+}
+.mono{font-family:'IBM Plex Mono',monospace; font-variant-numeric: tabular-nums;}
+h1,h2,h3,.display{font-family:'Fraunces',serif;}
+button{font-family:inherit;}
+a{color:inherit;}
+
+/* ---- Ledger paper texture (signature) ---- */
+.ledger-lines{
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 27px,
+    var(--paper-line) 27px,
+    var(--paper-line) 28px
+  );
+}
+
+/* ---- Header ---- */
+header.top{
+  padding:22px 18px 16px;
+  position:relative;
+  overflow:hidden;
+}
+header.top::before{
+  content:"";
+  position:absolute; inset:0;
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 22px, rgba(27,67,50,0.05) 22px, rgba(27,67,50,0.05) 23px);
+  pointer-events:none;
+}
+header.top .eyebrow{
+  font-size:11px; letter-spacing:1.6px; text-transform:uppercase;
+  color:var(--forest); font-weight:600; position:relative;
+}
+header.top h1{
+  margin:2px 0 0; font-size:28px; font-weight:600; color:var(--ink); position:relative;
+}
+header.top .month-nav{
+  display:flex; align-items:center; gap:10px; margin-top:10px; position:relative;
+}
+header.top .month-nav button{
+  width:30px; height:30px; border-radius:8px; border:1px solid var(--card-border);
+  background:var(--card); color:var(--forest); font-size:16px; cursor:pointer;
+}
+header.top .month-nav .label{
+  font-size:14px; font-weight:600; color:var(--ink-soft); flex:1; text-align:center;
+}
+
+main{padding:0 16px 24px; max-width:640px; margin:0 auto;}
+.view{display:none;}
+.view.active{display:block;}
+
+/* ---- Cards ---- */
+.card{
+  background:var(--card); border:1px solid var(--card-border); border-radius:var(--radius);
+  padding:16px; margin-bottom:14px; box-shadow:var(--shadow);
+}
+.card-title{
+  font-size:11px; letter-spacing:1.2px; text-transform:uppercase; font-weight:600;
+  color:var(--ink-faint); margin:0 0 10px;
+}
+
+/* ---- Gauge (ruler-style, signature element) ---- */
+.gauge-wrap{margin-top:4px;}
+.gauge-figures{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;}
+.gauge-figures .current{font-size:24px; font-weight:600;}
+.gauge-figures .target{font-size:12px; color:var(--ink-faint);}
+.gauge{width:100%; height:38px; display:block;}
+.gauge-caption{font-size:11.5px; color:var(--ink-soft); margin-top:6px;}
+.status-pill{
+  display:inline-block; font-size:10.5px; font-weight:600; padding:3px 8px; border-radius:20px;
+  letter-spacing:0.3px;
+}
+.pill-ok{background:var(--forest-soft); color:var(--forest);}
+.pill-warn{background:var(--gold-soft); color:var(--gold);}
+.pill-over{background:var(--red-soft); color:var(--red);}
+
+/* ---- Stat grid ---- */
+.stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.stat-box{
+  background:var(--card); border:1px solid var(--card-border); border-radius:12px; padding:12px 14px;
+}
+.stat-box .label{font-size:10.5px; text-transform:uppercase; letter-spacing:0.8px; color:var(--ink-faint); font-weight:600;}
+.stat-box .value{font-size:20px; font-weight:600; margin-top:4px;}
+.stat-box .sub{font-size:11px; color:var(--ink-soft); margin-top:2px;}
+
+/* ---- Lists ---- */
+.list-row{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:12px 0; border-bottom:1px solid var(--card-border);
+}
+.list-row:last-child{border-bottom:none;}
+.list-row .left{min-width:0;}
+.list-row .name{font-weight:600; font-size:14.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.list-row .meta{font-size:12px; color:var(--ink-soft); margin-top:2px;}
+.list-row .right{text-align:right; flex-shrink:0;}
+.list-row .amt{font-weight:600; font-size:15px;}
+.list-row .due{font-size:11px; margin-top:2px;}
+
+.empty-state{
+  text-align:center; padding:38px 16px; color:var(--ink-faint);
+}
+.empty-state .glyph{font-size:30px; margin-bottom:8px; font-family:'Fraunces',serif; color:var(--forest);}
+.empty-state .msg{font-size:13.5px; line-height:1.5;}
+
+/* ---- Buttons ---- */
+.btn{
+  border:none; border-radius:10px; padding:11px 16px; font-weight:600; font-size:14px;
+  cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:6px;
+}
+.btn-primary{background:var(--forest); color:#fff; width:100%;}
+.btn-secondary{background:var(--card); color:var(--ink); border:1px solid var(--card-border);}
+.btn-danger{background:var(--red-soft); color:var(--red);}
+.btn-ghost{background:transparent; color:var(--forest); padding:8px 4px;}
+.btn-block{width:100%;}
+.btn-row{display:flex; gap:8px;}
+.fab{
+  position:fixed; right:18px; bottom:92px; width:54px; height:54px; border-radius:50%;
+  background:var(--forest); color:#fff; font-size:26px; border:none; box-shadow:0 6px 18px rgba(27,67,50,0.35);
+  cursor:pointer; z-index:40; display:flex; align-items:center; justify-content:center; line-height:1;
+}
+
+/* ---- Bottom nav ---- */
+nav.bottom{
+  position:fixed; bottom:0; left:0; right:0; background:var(--card); border-top:1px solid var(--card-border);
+  display:flex; z-index:50; padding-bottom:env(safe-area-inset-bottom);
+}
+nav.bottom button{
+  flex:1; background:none; border:none; padding:10px 4px 8px; display:flex; flex-direction:column;
+  align-items:center; gap:3px; color:var(--ink-faint); font-size:10.5px; font-weight:600; cursor:pointer;
+}
+nav.bottom button .ico{font-size:19px; font-family:'Fraunces',serif;}
+nav.bottom button.active{color:var(--forest);}
+
+/* ---- Modal ---- */
+.overlay{
+  position:fixed; inset:0; background:rgba(31,37,33,0.45); display:none; align-items:flex-end;
+  z-index:100; justify-content:center;
+}
+.overlay.active{display:flex;}
+.sheet{
+  background:var(--paper); width:100%; max-width:640px; border-radius:20px 20px 0 0;
+  padding:20px 18px calc(20px + env(safe-area-inset-bottom)); max-height:88vh; overflow-y:auto;
+}
+.sheet h2{margin:0 0 16px; font-size:19px; font-weight:600;}
+.field{margin-bottom:14px;}
+.field label{display:block; font-size:11.5px; font-weight:600; text-transform:uppercase; letter-spacing:0.6px; color:var(--ink-soft); margin-bottom:6px;}
+.field input, .field select, .field textarea{
+  width:100%; border:1px solid var(--card-border); border-radius:10px; padding:11px 12px;
+  font-size:15px; font-family:inherit; background:#fff; color:var(--ink);
+}
+.field textarea{resize:vertical; min-height:60px;}
+.field-hint{font-size:11.5px; color:var(--ink-faint); margin-top:5px;}
+.seg{display:flex; border:1px solid var(--card-border); border-radius:10px; overflow:hidden;}
+.seg button{flex:1; padding:10px; border:none; background:#fff; font-weight:600; font-size:13px; color:var(--ink-soft); cursor:pointer;}
+.seg button.active{background:var(--forest); color:#fff;}
+
+/* ---- Detail chips ---- */
+.chip{display:inline-block; font-size:11px; font-weight:600; padding:3px 9px; border-radius:20px; background:var(--forest-soft); color:var(--forest); margin-right:6px;}
+
+/* ---- Toast ---- */
+#toast{
+  position:fixed; bottom:96px; left:50%; transform:translateX(-50%) translateY(20px); opacity:0;
+  background:var(--ink); color:#FAF7F0; padding:10px 18px; border-radius:10px; font-size:13.5px;
+  font-weight:500; z-index:200; transition:all .25s ease; pointer-events:none; white-space:nowrap;
+}
+#toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+.section-gap{height:6px;}
+.risk-dot{width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:5px;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="eyebrow">The Ledger</div>
+  <h1 id="headerTitle">Dashboard</h1>
+  <div class="month-nav" id="monthNav">
+    <button id="prevMonth">‹</button>
+    <div class="label" id="monthLabel">July 2026</div>
+    <button id="nextMonth">›</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- DASHBOARD -->
+  <div class="view active" id="view-dashboard">
+
+    <div class="card">
+      <div class="card-title">Lent out this month</div>
+      <div class="gauge-wrap">
+        <div class="gauge-figures">
+          <span class="current mono" id="lentCurrent">R0</span>
+          <span class="target">cap R30k–R35k <span id="lentStatusPill"></span></span>
+        </div>
+        <svg class="gauge" id="lentGauge" viewBox="0 0 320 38"></svg>
+        <div class="gauge-caption" id="lentCaption"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Income collected this month</div>
+      <div class="gauge-wrap">
+        <div class="gauge-figures">
+          <span class="current mono" id="incomeCurrent">R0</span>
+          <span class="target">target R45k–R52.5k <span id="incomeStatusPill"></span></span>
+        </div>
+        <svg class="gauge" id="incomeGauge" viewBox="0 0 320 38"></svg>
+        <div class="gauge-caption" id="incomeCaption"></div>
+      </div>
+    </div>
+
+    <div class="stat-grid" style="margin-bottom:14px;">
+      <div class="stat-box">
+        <div class="label">Active loans</div>
+        <div class="value mono" id="statActiveCount">0</div>
+        <div class="sub" id="statActiveSum">R0 outstanding</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Overdue</div>
+        <div class="value mono" id="statOverdueCount" style="color:var(--red)">0</div>
+        <div class="sub" id="statOverdueSum">R0 owed</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Expected this month</div>
+        <div class="value mono" id="statExpected">R0</div>
+        <div class="sub">principal + interest</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Clients</div>
+        <div class="value mono" id="statClientCount">0</div>
+        <div class="sub" id="statClientCap">of 30 target</div>
+      </div>
+    </div>
+
+    <div class="card" id="overdueCard" style="display:none;">
+      <div class="card-title" style="color:var(--red);">Needs chasing</div>
+      <div id="overdueList"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Recent activity</div>
+      <div id="recentList"></div>
+    </div>
+
+  </div>
+
+  <!-- LOANS -->
+  <div class="view" id="view-loans">
+    <div class="seg" style="margin-bottom:14px;">
+      <button class="loan-filter active" data-f="all">All</button>
+      <button class="loan-filter" data-f="active">Active</button>
+      <button class="loan-filter" data-f="overdue">Overdue</button>
+      <button class="loan-filter" data-f="repaid">Repaid</button>
+    </div>
+    <div class="card" style="padding:6px 16px;">
+      <div id="loansList"></div>
+    </div>
+  </div>
+
+  <!-- CLIENTS -->
+  <div class="view" id="view-clients">
+    <div class="card" style="padding:6px 16px;">
+      <div id="clientsList"></div>
+    </div>
+  </div>
+
+  <!-- CLIENT DETAIL -->
+  <div class="view" id="view-clientDetail">
+    <button class="btn-ghost" id="backToClients">← Back to clients</button>
+    <div class="card">
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px;">
+        <div class="card-title" style="margin:0;">Client</div>
+        <button class="btn-ghost" id="cdEditBtn" style="padding:0; font-size:12.5px; font-weight:600;">Edit</button>
+      </div>
+      <h2 id="cdName" style="margin:2px 0 4px;"></h2>
+      <div id="cdMeta" style="font-size:13px; color:var(--ink-soft); margin-bottom:10px;"></div>
+      <div id="cdRisk"></div>
+    </div>
+    <div class="card" id="cdBankCard">
+      <div class="card-title">Banking details</div>
+      <div id="cdBankInfo" class="mono" style="font-size:14px; line-height:1.7;"></div>
+    </div>
+    <div class="stat-grid" style="margin-bottom:14px;">
+      <div class="stat-box">
+        <div class="label">Outstanding</div>
+        <div class="value mono" id="cdOutstanding">R0</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Total borrowed</div>
+        <div class="value mono" id="cdTotalBorrowed">R0</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Loan history</div>
+      <div id="cdLoanList"></div>
+    </div>
+  </div>
+
+  <!-- REFERRALS -->
+  <div class="view" id="view-referrals">
+    <div class="card" style="padding:6px 16px;">
+      <div id="referralsList"></div>
+    </div>
+  </div>
+
+  <!-- REFERRAL DETAIL -->
+  <div class="view" id="view-referralDetail">
+    <button class="btn-ghost" id="backToReferrals">← Back to agents</button>
+    <div class="card">
+      <div class="card-title">Agent</div>
+      <h2 id="rdName" style="margin:0 0 4px;"></h2>
+      <div id="rdMeta" style="font-size:13px; color:var(--ink-soft); margin-bottom:10px;"></div>
+    </div>
+    <div class="stat-grid" style="margin-bottom:14px;">
+      <div class="stat-box">
+        <div class="label">Owed now</div>
+        <div class="value mono" id="rdOwed" style="color:var(--gold)">R0</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Loans attached</div>
+        <div class="value mono" id="rdLoanCount">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Lifetime commission</div>
+        <div class="value mono" id="rdLifetime">R0</div>
+        <div class="sub" id="rdPaidOut">R0 paid out</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Loans referred</div>
+      <div id="rdLoanList"></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="view" id="view-settings">
+    <div class="card">
+      <div class="card-title">Lending targets</div>
+      <div class="field">
+        <label>Monthly lending cap — min</label>
+        <input type="number" id="setCapMin">
+      </div>
+      <div class="field">
+        <label>Monthly lending cap — max</label>
+        <input type="number" id="setCapMax">
+      </div>
+      <div class="field">
+        <label>Monthly income target — min</label>
+        <input type="number" id="setIncMin">
+      </div>
+      <div class="field">
+        <label>Monthly income target — max</label>
+        <input type="number" id="setIncMax">
+      </div>
+      <div class="field">
+        <label>Default interest rate (%)</label>
+        <input type="number" id="setRate">
+      </div>
+      <div class="field">
+        <label>Max loan amount (R)</label>
+        <input type="number" id="setMaxLoan">
+      </div>
+      <div class="field">
+        <label>Late penalty (R) — leave blank if not decided yet</label>
+        <input type="number" id="setPenalty" placeholder="Not set">
+        <div class="field-hint">While this is blank, overdue loans are just flagged — no penalty gets added automatically.</div>
+      </div>
+      <button class="btn btn-primary btn-block" id="saveSettings">Save settings</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Data</div>
+      <button class="btn btn-secondary btn-block" id="exportData" style="margin-bottom:8px;">Export backup (.json)</button>
+      <button class="btn btn-danger btn-block" id="wipeData">Erase all data</button>
+    </div>
+  </div>
+
+</main>
+
+<button class="fab" id="fabAdd">+</button>
+
+<nav class="bottom">
+  <button class="navbtn active" data-view="dashboard"><span class="ico">◆</span>Dashboard</button>
+  <button class="navbtn" data-view="loans"><span class="ico">▤</span>Loans</button>
+  <button class="navbtn" data-view="clients"><span class="ico">◈</span>Clients</button>
+  <button class="navbtn" data-view="referrals"><span class="ico">✦</span>Agents</button>
+  <button class="navbtn" data-view="settings"><span class="ico">⚙</span>Settings</button>
+</nav>
+
+<!-- ADD CHOICE SHEET -->
+<div class="overlay" id="overlayAddChoice">
+  <div class="sheet">
+    <h2>What are you adding?</h2>
+    <div class="btn-row" style="margin-bottom:8px;">
+      <button class="btn btn-primary" style="flex:1" id="choiceNewLoan">New loan</button>
+      <button class="btn btn-secondary" style="flex:1" id="choiceNewClient">New client</button>
+    </div>
+    <button class="btn btn-secondary btn-block" id="choiceNewReferral" style="margin-bottom:8px;">New agent</button>
+    <button class="btn btn-ghost btn-block" data-close="overlayAddChoice">Cancel</button>
+  </div>
+</div>
+
+<!-- ADD/EDIT LOAN SHEET -->
+<div class="overlay" id="overlayLoan">
+  <div class="sheet">
+    <h2 id="loanSheetTitle">New loan</h2>
+    <div class="field">
+      <label>Client</label>
+      <select id="loanClient"></select>
+    </div>
+    <div class="field">
+      <label>Agent</label>
+      <select id="loanReferrer"></select>
+    </div>
+    <div class="field">
+      <label>Amount (R, max <span id="loanMaxLabel">1000</span>)</label>
+      <input type="number" id="loanAmount">
+    </div>
+    <div class="field">
+      <label>Date given</label>
+      <input type="date" id="loanDate">
+    </div>
+    <div class="field">
+      <label>Interest rate (%)</label>
+      <input type="number" id="loanRate">
+    </div>
+    <div class="field-hint" id="loanDueHint" style="margin-bottom:14px;"></div>
+    <button class="btn btn-primary btn-block" id="saveLoan">Save loan</button>
+  </div>
+</div>
+
+<!-- ADD/EDIT CLIENT SHEET -->
+<div class="overlay" id="overlayClient">
+  <div class="sheet">
+    <h2 id="clientSheetTitle">New client</h2>
+    <div style="display:flex; gap:10px;">
+      <div class="field" style="flex:1;">
+        <label>Name</label>
+        <input type="text" id="clientName">
+      </div>
+      <div class="field" style="flex:1;">
+        <label>Surname</label>
+        <input type="text" id="clientSurname">
+      </div>
+    </div>
+    <div class="field">
+      <label>Contact number</label>
+      <input type="tel" id="clientPhone">
+    </div>
+    <div class="card-title" style="margin-top:2px;">Banking details</div>
+    <div class="field">
+      <label>Bank</label>
+      <select id="clientBank">
+        <option value="">Select bank</option>
+      </select>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <div class="field" style="flex:1;">
+        <label>Account number</label>
+        <input type="text" inputmode="numeric" id="clientAccountNumber">
+      </div>
+      <div class="field" style="flex:1;">
+        <label>Branch number</label>
+        <input type="text" inputmode="numeric" id="clientBranchNumber">
+      </div>
+    </div>
+    <div class="field-hint" style="margin-top:-8px; margin-bottom:14px;">Branch number defaults to the bank's universal code — edit if this client's branch differs.</div>
+    <div class="field">
+      <label>Notes</label>
+      <textarea id="clientNotes" placeholder="Anything worth remembering"></textarea>
+    </div>
+    <button class="btn btn-primary btn-block" id="saveClient">Save client</button>
+  </div>
+</div>
+
+<!-- ADD/EDIT REFERRER SHEET -->
+<div class="overlay" id="overlayReferrer">
+  <div class="sheet">
+    <h2 id="referrerSheetTitle">New agent</h2>
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="referrerName">
+    </div>
+    <div class="field">
+      <label>Phone</label>
+      <input type="text" id="referrerPhone">
+    </div>
+    <div class="field">
+      <label>Notes</label>
+      <textarea id="referrerNotes" placeholder="Anything worth remembering"></textarea>
+    </div>
+    <div class="field-hint" style="margin-bottom:14px;">An agent earns 20% of the interest on any loan referred to them, paid out once that loan is repaid.</div>
+    <button class="btn btn-primary btn-block" id="saveReferrer">Save agent</button>
+  </div>
+</div>
+
+<!-- MARK COMMISSION PAID SHEET -->
+<div class="overlay" id="overlayCommission">
+  <div class="sheet">
+    <h2>Pay commission</h2>
+    <div id="commissionSummary" style="font-size:13.5px; color:var(--ink-soft); margin-bottom:14px;"></div>
+    <button class="btn btn-primary btn-block" id="confirmCommissionPaid">Mark this commission as paid</button>
+  </div>
+</div>
+
+<!-- REPAY SHEET -->
+<div class="overlay" id="overlayRepay">
+  <div class="sheet">
+    <h2>Mark as repaid</h2>
+    <div id="repaySummary" style="font-size:13.5px; color:var(--ink-soft); margin-bottom:14px;"></div>
+    <div class="field">
+      <label>Amount received (R)</label>
+      <input type="number" id="repayAmount">
+    </div>
+    <div class="field">
+      <label>Date received</label>
+      <input type="date" id="repayDate">
+    </div>
+    <button class="btn btn-primary btn-block" id="confirmRepay">Confirm repayment</button>
+  </div>
+</div>
+
+<!-- OVERDUE ACTION SHEET -->
+<div class="overlay" id="overlayOverdue">
+  <div class="sheet">
+    <h2>Loan overdue</h2>
+    <div id="overdueSummary" style="font-size:13.5px; color:var(--ink-soft); margin-bottom:14px;"></div>
+    <div class="btn-row" style="margin-bottom:8px;">
+      <button class="btn btn-secondary" style="flex:1" id="overdueRepayBtn">Mark repaid</button>
+      <button class="btn btn-danger" style="flex:1" id="overduePenaltyBtn">Apply penalty</button>
+    </div>
+    <button class="btn btn-ghost btn-block" data-close="overlayOverdue">Close</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function(){
+
+// ---------------- Data layer ----------------
+const K = { CLIENTS:'lt_clients', LOANS:'lt_loans', SETTINGS:'lt_settings', REFERRERS:'lt_referrers' };
+const DEFAULT_SETTINGS = { capMin:30000, capMax:35000, incMin:45000, incMax:52500, rate:50, maxLoan:1000, penalty:null };
+
+function load(key, fallback){
+  try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+  catch(e){ return fallback; }
+}
+function save(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+let clients = load(K.CLIENTS, []);
+let loans = load(K.LOANS, []);
+let referrers = load(K.REFERRERS, []);
+let settings = Object.assign({}, DEFAULT_SETTINGS, load(K.SETTINGS, {}));
+
+function persistClients(){ save(K.CLIENTS, clients); }
+function persistLoans(){ save(K.LOANS, loans); }
+function persistReferrers(){ save(K.REFERRERS, referrers); }
+function persistSettings(){ save(K.SETTINGS, settings); }
+function referrerById(id){ return referrers.find(r=>r.id===id); }
+
+// ---------------- Date helpers ----------------
+function isoDate(d){ return d.toISOString().slice(0,10); }
+function todayISO(){ return isoDate(new Date()); }
+function parseISO(s){ const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); }
+function endOfMonth(dateObj){
+  return new Date(dateObj.getFullYear(), dateObj.getMonth()+1, 0);
+}
+function monthKeyOf(dateObj){ return dateObj.getFullYear()+'-'+String(dateObj.getMonth()+1).padStart(2,'0'); }
+function fmtMonthLabel(dateObj){
+  return dateObj.toLocaleDateString('en-ZA', { month:'long', year:'numeric' });
+}
+function fmtShortDate(iso){
+  const d = parseISO(iso);
+  return d.toLocaleDateString('en-ZA', { day:'numeric', month:'short' });
+}
+function R(n){
+  n = Math.round(n);
+  return 'R' + n.toLocaleString('en-ZA');
+}
+
+let cursorDate = new Date(); // which month we're viewing on dashboard/loans
+cursorDate.setDate(1);
+
+// ---------------- Loan computed fields ----------------
+function loanTotalDue(loan){
+  const interest = loan.amount * (loan.rate/100);
+  return loan.amount + interest + (loan.penalty || 0);
+}
+function loanInterest(loan){ return loan.amount * (loan.rate/100); }
+function loanCommission(loan){ return loan.referrerId ? loanInterest(loan) * 0.20 : 0; }
+function referrerLoans(referrerId){ return loans.filter(l=>l.referrerId===referrerId); }
+function referrerOwed(referrerId){
+  return referrerLoans(referrerId).filter(l=>l.status==='repaid' && !l.commissionPaid)
+    .reduce((s,l)=>s+loanCommission(l),0);
+}
+function referrerLifetimeCommission(referrerId){
+  return referrerLoans(referrerId).filter(l=>l.status==='repaid')
+    .reduce((s,l)=>s+loanCommission(l),0);
+}
+function referrerPaidOut(referrerId){
+  return referrerLoans(referrerId).filter(l=>l.status==='repaid' && l.commissionPaid)
+    .reduce((s,l)=>s+loanCommission(l),0);
+}
+function loanDueDateObj(loan){ return parseISO(loan.dueDate); }
+function isOverdue(loan){
+  return loan.status === 'active' && loanDueDateObj(loan) < new Date(new Date().toDateString());
+}
+function refreshOverdueStatuses(){
+  let changed = false;
+  loans.forEach(l=>{
+    if(l.status === 'active' && isOverdue(l)){
+      l.status = 'overdue'; changed = true;
+    }
+  });
+  if(changed) persistLoans();
+}
+
+function clientById(id){ return clients.find(c=>c.id===id); }
+const BANKS = {
+  'Absa':'632005',
+  'Capitec Bank':'470010',
+  'First National Bank (FNB)':'250655',
+  'Nedbank':'198765',
+  'Standard Bank':'051001',
+  'Investec':'580105',
+  'TymeBank':'678910',
+  'Discovery Bank':'679000',
+  'African Bank':'430000'
+};
+(function populateBankSelect(){
+  const sel = document.getElementById('clientBank');
+  sel.innerHTML += Object.keys(BANKS).map(b=>`<option value="${b}">${b}</option>`).join('');
+})();
+document.getElementById('clientBank').addEventListener('change', function(){
+  const code = BANKS[this.value];
+  if(code) document.getElementById('clientBranchNumber').value = code;
+});
+
+// ---------------- Rendering: nav & views ----------------
+const views = ['dashboard','loans','clients','clientDetail','referrals','referralDetail','settings'];
+function showView(name){
+  views.forEach(v=>{
+    document.getElementById('view-'+v).classList.toggle('active', v===name);
+  });
+  document.querySelectorAll('.navbtn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.view === name);
+  });
+  const titles = { dashboard:'Dashboard', loans:'Loans', clients:'Clients', clientDetail:'Client', referrals:'Agents', referralDetail:'Agent', settings:'Settings' };
+  document.getElementById('headerTitle').textContent = titles[name] || 'The Ledger';
+  document.getElementById('monthNav').style.display = (name==='dashboard'||name==='loans') ? 'flex' : 'none';
+  if(name==='dashboard') renderDashboard();
+  if(name==='loans') renderLoansList();
+  if(name==='clients') renderClientsList();
+  if(name==='referrals') renderReferralsList();
+}
+document.querySelectorAll('.navbtn').forEach(b=>{
+  b.addEventListener('click', ()=> showView(b.dataset.view));
+});
+document.getElementById('prevMonth').addEventListener('click', ()=>{
+  cursorDate.setMonth(cursorDate.getMonth()-1); refreshMonthLabel();
+  if(document.getElementById('view-dashboard').classList.contains('active')) renderDashboard();
+  if(document.getElementById('view-loans').classList.contains('active')) renderLoansList();
+});
+document.getElementById('nextMonth').addEventListener('click', ()=>{
+  cursorDate.setMonth(cursorDate.getMonth()+1); refreshMonthLabel();
+  if(document.getElementById('view-dashboard').classList.contains('active')) renderDashboard();
+  if(document.getElementById('view-loans').classList.contains('active')) renderLoansList();
+});
+function refreshMonthLabel(){ document.getElementById('monthLabel').textContent = fmtMonthLabel(cursorDate); }
+
+// ---------------- Gauge (ledger ruler) ----------------
+function renderGauge(svgEl, current, targetMin, targetMax){
+  const w = 320, h = 38;
+  const maxScale = Math.max(targetMax * 1.15, current * 1.1, 1);
+  const px = v => (v/maxScale) * w;
+  let status = 'ok';
+  if(current < targetMin) status = 'under';
+  else if(current > targetMax) status = 'over';
+
+  const barColor = status==='over' ? 'var(--red)' : (status==='under' ? 'var(--gold)' : 'var(--forest)');
+  const zoneX = px(targetMin), zoneW = px(targetMax) - px(targetMin);
+  let ticks = '';
+  const tickCount = 8;
+  for(let i=0;i<=tickCount;i++){
+    const x = (w/tickCount)*i;
+    ticks += `<line x1="${x}" y1="26" x2="${x}" y2="${i%2===0?32:29}" stroke="var(--card-border)" stroke-width="1"/>`;
+  }
+  const fillW = Math.min(px(current), w);
+  return {
+    svg: `
+      <rect x="0" y="14" width="${w}" height="12" rx="6" fill="#EFEAE0"/>
+      <rect x="${zoneX}" y="14" width="${zoneW}" height="12" fill="var(--forest-soft)"/>
+      <rect x="0" y="14" width="${fillW}" height="12" rx="6" fill="${barColor}" opacity="0.9"/>
+      <line x1="${px(targetMax)}" y1="10" x2="${px(targetMax)}" y2="28" stroke="var(--ink-soft)" stroke-width="1.5" stroke-dasharray="2,2"/>
+      ${ticks}
+    `,
+    status
+  };
+}
+
+// ---------------- Dashboard ----------------
+function renderDashboard(){
+  refreshOverdueStatuses();
+  const mk = monthKeyOf(cursorDate);
+  refreshMonthLabel();
+
+  const loansThisMonth = loans.filter(l => monthKeyOf(parseISO(l.dateGiven)) === mk);
+  const lentTotal = loansThisMonth.reduce((s,l)=>s+l.amount,0);
+  const expectedTotal = loansThisMonth.reduce((s,l)=>s+loanTotalDue(l),0);
+  const collectedThisMonth = loans.filter(l => l.repaidDate && monthKeyOf(parseISO(l.repaidDate)) === mk)
+                                   .reduce((s,l)=>s+(l.repaidAmount||0),0);
+
+  document.getElementById('lentCurrent').textContent = R(lentTotal);
+  const g1 = renderGauge(null, lentTotal, settings.capMin, settings.capMax);
+  document.getElementById('lentGauge').innerHTML = g1.svg;
+  document.getElementById('lentStatusPill').innerHTML =
+    g1.status==='over' ? `<span class="status-pill pill-over">over cap</span>` :
+    g1.status==='under' ? `<span class="status-pill pill-warn">below cap</span>` :
+    `<span class="status-pill pill-ok">on target</span>`;
+  document.getElementById('lentCaption').textContent = `${loansThisMonth.length} loan${loansThisMonth.length===1?'':'s'} given this month`;
+
+  document.getElementById('incomeCurrent').textContent = R(collectedThisMonth);
+  const g2 = renderGauge(null, collectedThisMonth, settings.incMin, settings.incMax);
+  document.getElementById('incomeGauge').innerHTML = g2.svg;
+  document.getElementById('incomeStatusPill').innerHTML =
+    g2.status==='over' ? `<span class="status-pill pill-ok">ahead</span>` :
+    g2.status==='under' ? `<span class="status-pill pill-warn">behind</span>` :
+    `<span class="status-pill pill-ok">on target</span>`;
+  document.getElementById('incomeCaption').textContent = `Expected if all this month's loans repay in full: ${R(expectedTotal)}`;
+
+  const activeLoans = loans.filter(l=>l.status==='active');
+  const overdueLoans = loans.filter(l=>l.status==='overdue');
+  document.getElementById('statActiveCount').textContent = activeLoans.length;
+  document.getElementById('statActiveSum').textContent = R(activeLoans.reduce((s,l)=>s+loanTotalDue(l),0)) + ' outstanding';
+  document.getElementById('statOverdueCount').textContent = overdueLoans.length;
+  document.getElementById('statOverdueSum').textContent = R(overdueLoans.reduce((s,l)=>s+loanTotalDue(l),0)) + ' owed';
+  document.getElementById('statExpected').textContent = R(expectedTotal);
+  document.getElementById('statClientCount').textContent = clients.length;
+  document.getElementById('statClientCap').textContent = 'of 30 target';
+
+  const overdueCard = document.getElementById('overdueCard');
+  const overdueList = document.getElementById('overdueList');
+  if(overdueLoans.length){
+    overdueCard.style.display = 'block';
+    overdueList.innerHTML = overdueLoans.sort((a,b)=>a.dueDate.localeCompare(b.dueDate)).map(l=>{
+      const c = clientById(l.clientId);
+      return `<div class="list-row" data-loan="${l.id}" data-act="overdue">
+        <div class="left">
+          <div class="name">${c ? c.name : 'Unknown'}</div>
+          <div class="meta">Due ${fmtShortDate(l.dueDate)} · ${R(l.amount)} loan</div>
+        </div>
+        <div class="right">
+          <div class="amt" style="color:var(--red)">${R(loanTotalDue(l))}</div>
+        </div>
+      </div>`;
+    }).join('');
+  } else {
+    overdueCard.style.display = 'none';
+  }
+
+  const recent = [...loans].sort((a,b)=> (b.repaidDate||b.dateGiven).localeCompare(a.repaidDate||a.dateGiven)).slice(0,6);
+  const recentList = document.getElementById('recentList');
+  if(!recent.length){
+    recentList.innerHTML = `<div class="empty-state"><div class="glyph">§</div><div class="msg">No entries yet. Tap + to log your first loan.</div></div>`;
+  } else {
+    recentList.innerHTML = recent.map(l=>{
+      const c = clientById(l.clientId);
+      const statusColor = l.status==='repaid' ? 'var(--forest)' : l.status==='overdue' ? 'var(--red)' : 'var(--gold)';
+      const statusText = l.status==='repaid' ? 'repaid' : l.status==='overdue' ? 'overdue' : 'active';
+      return `<div class="list-row" data-loan="${l.id}" data-act="open">
+        <div class="left">
+          <div class="name">${c ? c.name : 'Unknown'}</div>
+          <div class="meta">Given ${fmtShortDate(l.dateGiven)}</div>
+        </div>
+        <div class="right">
+          <div class="amt">${R(l.amount)}</div>
+          <div class="due" style="color:${statusColor}">${statusText}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
+
+document.getElementById('overdueList').addEventListener('click', handleRowClick);
+document.getElementById('recentList').addEventListener('click', handleRowClick);
+
+function handleRowClick(e){
+  const row = e.target.closest('.list-row');
+  if(!row) return;
+  const loan = loans.find(l=>l.id===row.dataset.loan);
+  if(!loan) return;
+  if(row.dataset.act === 'overdue') openOverdueSheet(loan);
+  else openRepaySheetOrDetail(loan);
+}
+function openRepaySheetOrDetail(loan){
+  if(loan.status === 'repaid'){
+    showToast('Repaid ' + fmtShortDate(loan.repaidDate) + ' · ' + R(loan.repaidAmount));
+  } else {
+    openRepaySheet(loan);
+  }
+}
+
+// ---------------- Loans list ----------------
+let loanFilter = 'all';
+document.querySelectorAll('.loan-filter').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('.loan-filter').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    loanFilter = b.dataset.f;
+    renderLoansList();
+  });
+});
+function renderLoansList(){
+  refreshOverdueStatuses();
+  refreshMonthLabel();
+  const mk = monthKeyOf(cursorDate);
+  let list = loans.filter(l => monthKeyOf(parseISO(l.dateGiven)) === mk);
+  if(loanFilter !== 'all') list = list.filter(l=>l.status===loanFilter);
+  list.sort((a,b)=>b.dateGiven.localeCompare(a.dateGiven));
+
+  const el = document.getElementById('loansList');
+  if(!list.length){
+    el.innerHTML = `<div class="empty-state"><div class="glyph">§</div><div class="msg">No loans here yet.</div></div>`;
+    return;
+  }
+  el.innerHTML = list.map(l=>{
+    const c = clientById(l.clientId);
+    const r = l.referrerId ? referrerById(l.referrerId) : null;
+    const statusColor = l.status==='repaid' ? 'var(--forest)' : l.status==='overdue' ? 'var(--red)' : 'var(--gold)';
+    const statusText = l.status==='repaid' ? 'repaid '+fmtShortDate(l.repaidDate) : l.status==='overdue' ? 'overdue since '+fmtShortDate(l.dueDate) : 'due '+fmtShortDate(l.dueDate);
+    return `<div class="list-row" data-loan="${l.id}">
+      <div class="left">
+        <div class="name">${c ? c.name : 'Unknown'}</div>
+        <div class="meta">${R(l.amount)} at ${l.rate}% · given ${fmtShortDate(l.dateGiven)}${r?' · agent: '+r.name:''}</div>
+      </div>
+      <div class="right">
+        <div class="amt">${R(loanTotalDue(l))}</div>
+        <div class="due" style="color:${statusColor}">${statusText}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+document.getElementById('loansList').addEventListener('click', e=>{
+  const row = e.target.closest('.list-row');
+  if(!row) return;
+  const loan = loans.find(l=>l.id===row.dataset.loan);
+  if(!loan) return;
+  if(loan.status === 'overdue') openOverdueSheet(loan);
+  else if(loan.status === 'active') openRepaySheet(loan);
+  else showToast('Repaid ' + fmtShortDate(loan.repaidDate) + ' · ' + R(loan.repaidAmount));
+});
+
+// ---------------- Clients list ----------------
+function clientRisk(clientLoans){
+  const finished = clientLoans.filter(l=>l.status==='repaid' || l.status==='overdue');
+  if(!finished.length) return { label:'New', color:'var(--ink-faint)' };
+  const onTime = finished.filter(l=> l.status==='repaid' && l.repaidDate <= l.dueDate).length;
+  const ratio = onTime / finished.length;
+  if(ratio >= 0.8) return { label:'Reliable', color:'var(--forest)' };
+  if(ratio >= 0.5) return { label:'Mixed', color:'var(--gold)' };
+  return { label:'Risky', color:'var(--red)' };
+}
+function renderClientsList(){
+  const el = document.getElementById('clientsList');
+  if(!clients.length){
+    el.innerHTML = `<div class="empty-state"><div class="glyph">◈</div><div class="msg">No clients yet. Tap + to add one.</div></div>`;
+    return;
+  }
+  const sorted = [...clients].sort((a,b)=>a.name.localeCompare(b.name));
+  el.innerHTML = sorted.map(c=>{
+    const cLoans = loans.filter(l=>l.clientId===c.id);
+    const outstanding = cLoans.filter(l=>l.status!=='repaid').reduce((s,l)=>s+loanTotalDue(l),0);
+    const risk = clientRisk(cLoans);
+    return `<div class="list-row" data-client="${c.id}">
+      <div class="left">
+        <div class="name"><span class="risk-dot" style="background:${risk.color}"></span>${c.name}</div>
+        <div class="meta">${cLoans.length} loan${cLoans.length===1?'':'s'} · ${risk.label}</div>
+      </div>
+      <div class="right">
+        <div class="amt">${R(outstanding)}</div>
+        <div class="due" style="color:var(--ink-faint)">outstanding</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+document.getElementById('clientsList').addEventListener('click', e=>{
+  const row = e.target.closest('.list-row');
+  if(!row) return;
+  openClientDetail(row.dataset.client);
+});
+document.getElementById('backToClients').addEventListener('click', ()=> showView('clients'));
+
+function openClientDetail(clientId){
+  const c = clientById(clientId);
+  if(!c) return;
+  document.getElementById('cdName').textContent = c.name;
+  document.getElementById('cdMeta').textContent = c.phone ? c.phone + (c.notes ? ' · '+c.notes : '') : (c.notes||'No notes');
+  const cLoans = loans.filter(l=>l.clientId===clientId).sort((a,b)=>b.dateGiven.localeCompare(a.dateGiven));
+  const risk = clientRisk(cLoans);
+  document.getElementById('cdRisk').innerHTML = `<span class="chip" style="background:${risk.color}22; color:${risk.color}">${risk.label} repayer</span>`;
+  const bankCard = document.getElementById('cdBankCard');
+  if(c.bank || c.accountNumber || c.branchNumber){
+    bankCard.style.display = '';
+    document.getElementById('cdBankInfo').innerHTML =
+      `${c.bank || '—'}<br>Acc: ${c.accountNumber || '—'}<br>Branch: ${c.branchNumber || '—'}`;
+  } else {
+    bankCard.style.display = 'none';
+  }
+  document.getElementById('cdEditBtn').onclick = ()=> openEditClientSheet(c);
+  const outstanding = cLoans.filter(l=>l.status!=='repaid').reduce((s,l)=>s+loanTotalDue(l),0);
+  const totalBorrowed = cLoans.reduce((s,l)=>s+l.amount,0);
+  document.getElementById('cdOutstanding').textContent = R(outstanding);
+  document.getElementById('cdTotalBorrowed').textContent = R(totalBorrowed);
+  const listEl = document.getElementById('cdLoanList');
+  if(!cLoans.length){
+    listEl.innerHTML = `<div class="empty-state"><div class="msg">No loans yet for this client.</div></div>`;
+  } else {
+    listEl.innerHTML = cLoans.map(l=>{
+      const statusColor = l.status==='repaid' ? 'var(--forest)' : l.status==='overdue' ? 'var(--red)' : 'var(--gold)';
+      const statusText = l.status==='repaid' ? 'repaid '+fmtShortDate(l.repaidDate) : l.status==='overdue' ? 'overdue' : 'due '+fmtShortDate(l.dueDate);
+      return `<div class="list-row" data-loan="${l.id}">
+        <div class="left">
+          <div class="name">${R(l.amount)} at ${l.rate}%</div>
+          <div class="meta">given ${fmtShortDate(l.dateGiven)}</div>
+        </div>
+        <div class="right">
+          <div class="amt">${R(loanTotalDue(l))}</div>
+          <div class="due" style="color:${statusColor}">${statusText}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  showView('clientDetail');
+}
+document.getElementById('cdLoanList').addEventListener('click', e=>{
+  const row = e.target.closest('.list-row');
+  if(!row) return;
+  const loan = loans.find(l=>l.id===row.dataset.loan);
+  if(!loan) return;
+  if(loan.status === 'overdue') openOverdueSheet(loan);
+  else if(loan.status === 'active') openRepaySheet(loan);
+  else showToast('Repaid ' + fmtShortDate(loan.repaidDate) + ' · ' + R(loan.repaidAmount));
+});
+
+// ---------------- Referrals list ----------------
+function renderReferralsList(){
+  const el = document.getElementById('referralsList');
+  if(!referrers.length){
+    el.innerHTML = `<div class="empty-state"><div class="glyph">✦</div><div class="msg">No agents yet. Tap + to add one.</div></div>`;
+    return;
+  }
+  const sorted = [...referrers].sort((a,b)=>a.name.localeCompare(b.name));
+  el.innerHTML = sorted.map(r=>{
+    const rLoans = referrerLoans(r.id);
+    const owed = referrerOwed(r.id);
+    return `<div class="list-row" data-referrer="${r.id}">
+      <div class="left">
+        <div class="name">${r.name}</div>
+        <div class="meta">${rLoans.length} loan${rLoans.length===1?'':'s'} attached</div>
+      </div>
+      <div class="right">
+        <div class="amt" style="color:${owed>0?'var(--gold)':'inherit'}">${R(owed)}</div>
+        <div class="due" style="color:var(--ink-faint)">owed</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+document.getElementById('referralsList').addEventListener('click', e=>{
+  const row = e.target.closest('.list-row');
+  if(!row) return;
+  openReferralDetail(row.dataset.referrer);
+});
+document.getElementById('backToReferrals').addEventListener('click', ()=> showView('referrals'));
+
+let currentReferralDetailId = null;
+function openReferralDetail(referrerId){
+  const r = referrerById(referrerId);
+  if(!r) return;
+  currentReferralDetailId = referrerId;
+  document.getElementById('rdName').textContent = r.name;
+  document.getElementById('rdMeta').textContent = r.phone ? r.phone + (r.notes ? ' · '+r.notes : '') : (r.notes||'No notes');
+  const rLoans = referrerLoans(referrerId).sort((a,b)=>b.dateGiven.localeCompare(a.dateGiven));
+  document.getElementById('rdOwed').textContent = R(referrerOwed(referrerId));
+  document.getElementById('rdLoanCount').textContent = rLoans.length;
+  document.getElementById('rdLifetime').textContent = R(referrerLifetimeCommission(referrerId));
+  document.getElementById('rdPaidOut').textContent = R(referrerPaidOut(referrerId)) + ' paid out';
+  const listEl = document.getElementById('rdLoanList');
+  if(!rLoans.length){
+    listEl.innerHTML = `<div class="empty-state"><div class="msg">No loans referred yet.</div></div>`;
+  } else {
+    listEl.innerHTML = rLoans.map(l=>{
+      const c = clientById(l.clientId);
+      const commission = loanCommission(l);
+      let statusText, statusColor;
+      if(l.status !== 'repaid'){ statusText = 'not yet repaid'; statusColor = 'var(--ink-faint)'; }
+      else if(l.commissionPaid){ statusText = 'paid'; statusColor = 'var(--forest)'; }
+      else { statusText = 'owed'; statusColor = 'var(--gold)'; }
+      const clickable = l.status==='repaid' && !l.commissionPaid;
+      return `<div class="list-row" data-loan="${l.id}" style="${clickable?'':'opacity:0.85'}">
+        <div class="left">
+          <div class="name">${c ? c.name : 'Unknown'}</div>
+          <div class="meta">${R(l.amount)} loan at ${l.rate}% · given ${fmtShortDate(l.dateGiven)}</div>
+        </div>
+        <div class="right">
+          <div class="amt">${R(commission)}</div>
+          <div class="due" style="color:${statusColor}">${statusText}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  showView('referralDetail');
+}
+document.getElementById('rdLoanList').addEventListener('click', e=>{
+  const row = e.target.closest('.list-row');
+  if(!row) return;
+  const loan = loans.find(l=>l.id===row.dataset.loan);
+  if(!loan || loan.status!=='repaid' || loan.commissionPaid) return;
+  openCommissionSheet(loan);
+});
+
+let payingCommissionLoanId = null;
+function openCommissionSheet(loan){
+  payingCommissionLoanId = loan.id;
+  const r = referrerById(loan.referrerId);
+  const c = clientById(loan.clientId);
+  document.getElementById('commissionSummary').textContent =
+    `${r ? r.name : 'Agent'} — ${R(loanCommission(loan))} commission on ${c ? c.name : 'client'}'s ${R(loan.amount)} loan.`;
+  openOverlay('overlayCommission');
+}
+document.getElementById('confirmCommissionPaid').addEventListener('click', ()=>{
+  const loan = loans.find(l=>l.id===payingCommissionLoanId);
+  if(!loan) return;
+  loan.commissionPaid = true;
+  loan.commissionPaidDate = todayISO();
+  persistLoans();
+  closeOverlay('overlayCommission');
+  showToast('Commission marked paid');
+  if(currentReferralDetailId) openReferralDetail(currentReferralDetailId);
+});
+
+// ---------------- Referrer sheet ----------------
+function refreshReferrerSelect(){
+  const sel = document.getElementById('loanReferrer');
+  const sorted = [...referrers].sort((a,b)=>a.name.localeCompare(b.name));
+  sel.innerHTML = `<option value="">No agent</option>` + sorted.map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
+}
+function openReferrerSheet(){
+  document.getElementById('referrerSheetTitle').textContent = 'New agent';
+  document.getElementById('referrerName').value = '';
+  document.getElementById('referrerPhone').value = '';
+  document.getElementById('referrerNotes').value = '';
+  openOverlay('overlayReferrer');
+}
+document.getElementById('choiceNewReferral').addEventListener('click', ()=>{
+  closeOverlay('overlayAddChoice'); openReferrerSheet();
+});
+document.getElementById('saveReferrer').addEventListener('click', ()=>{
+  const name = document.getElementById('referrerName').value.trim();
+  if(!name){ showToast('Enter a name'); return; }
+  referrers.push({
+    id: uid(), name,
+    phone: document.getElementById('referrerPhone').value.trim(),
+    notes: document.getElementById('referrerNotes').value.trim(),
+    createdAt: todayISO()
+  });
+  persistReferrers();
+  closeOverlay('overlayReferrer');
+  showToast('Agent added');
+  if(document.getElementById('view-referrals').classList.contains('active')) renderReferralsList();
+});
+
+// ---------------- Overlays ----------------
+function openOverlay(id){ document.getElementById(id).classList.add('active'); }
+function closeOverlay(id){ document.getElementById(id).classList.remove('active'); }
+document.querySelectorAll('[data-close]').forEach(b=>{
+  b.addEventListener('click', ()=> closeOverlay(b.dataset.close));
+});
+document.querySelectorAll('.overlay').forEach(ov=>{
+  ov.addEventListener('click', e=>{ if(e.target === ov) closeOverlay(ov.id); });
+});
+
+// ---------------- Add choice ----------------
+document.getElementById('fabAdd').addEventListener('click', ()=> openOverlay('overlayAddChoice'));
+document.getElementById('choiceNewLoan').addEventListener('click', ()=>{
+  closeOverlay('overlayAddChoice'); openLoanSheet();
+});
+document.getElementById('choiceNewClient').addEventListener('click', ()=>{
+  closeOverlay('overlayAddChoice'); openClientSheet();
+});
+
+// ---------------- Loan sheet ----------------
+let editingLoanId = null;
+function refreshClientSelect(){
+  const sel = document.getElementById('loanClient');
+  const sorted = [...clients].sort((a,b)=>a.name.localeCompare(b.name));
+  sel.innerHTML = sorted.map(c=>`<option value="${c.id}">${c.name}</option>`).join('') ||
+    `<option value="">Add a client first</option>`;
+}
+function openLoanSheet(){
+  editingLoanId = null;
+  document.getElementById('loanSheetTitle').textContent = 'New loan';
+  refreshClientSelect();
+  refreshReferrerSelect();
+  document.getElementById('loanAmount').value = '';
+  document.getElementById('loanDate').value = todayISO();
+  document.getElementById('loanRate').value = settings.rate;
+  document.getElementById('loanMaxLabel').textContent = settings.maxLoan;
+  updateLoanDueHint();
+  openOverlay('overlayLoan');
+}
+document.getElementById('loanDate').addEventListener('change', updateLoanDueHint);
+function updateLoanDueHint(){
+  const dateVal = document.getElementById('loanDate').value;
+  if(!dateVal) return;
+  const due = endOfMonth(parseISO(dateVal));
+  document.getElementById('loanDueHint').textContent = 'Due date (end of month): ' + due.toLocaleDateString('en-ZA', { day:'numeric', month:'long', year:'numeric' });
+}
+document.getElementById('saveLoan').addEventListener('click', ()=>{
+  const clientId = document.getElementById('loanClient').value;
+  const referrerId = document.getElementById('loanReferrer').value || null;
+  const amount = parseFloat(document.getElementById('loanAmount').value);
+  const dateGiven = document.getElementById('loanDate').value;
+  const rate = parseFloat(document.getElementById('loanRate').value);
+  if(!clientId){ showToast('Add a client first'); return; }
+  if(!amount || amount <= 0){ showToast('Enter a valid amount'); return; }
+  if(amount > settings.maxLoan){ showToast(`Heads up: that's over your ${R(settings.maxLoan)} max — saved anyway`); }
+  if(!dateGiven){ showToast('Pick a date'); return; }
+  const dueDate = isoDate(endOfMonth(parseISO(dateGiven)));
+  loans.push({
+    id: uid(), clientId, referrerId, amount, rate: isNaN(rate)?settings.rate:rate,
+    dateGiven, dueDate, status:'active', penalty:0, repaidDate:null, repaidAmount:null,
+    commissionPaid:false, commissionPaidDate:null
+  });
+  persistLoans();
+  closeOverlay('overlayLoan');
+  showToast('Loan saved');
+  showView('dashboard');
+});
+
+// ---------------- Client sheet ----------------
+let editingClientId = null;
+function openClientSheet(){
+  editingClientId = null;
+  document.getElementById('clientSheetTitle').textContent = 'New client';
+  document.getElementById('clientName').value = '';
+  document.getElementById('clientSurname').value = '';
+  document.getElementById('clientPhone').value = '';
+  document.getElementById('clientBank').value = '';
+  document.getElementById('clientAccountNumber').value = '';
+  document.getElementById('clientBranchNumber').value = '';
+  document.getElementById('clientNotes').value = '';
+  openOverlay('overlayClient');
+}
+function openEditClientSheet(client){
+  editingClientId = client.id;
+  document.getElementById('clientSheetTitle').textContent = 'Edit client';
+  document.getElementById('clientName').value = client.firstName || client.name || '';
+  document.getElementById('clientSurname').value = client.surname || '';
+  document.getElementById('clientPhone').value = client.phone || '';
+  document.getElementById('clientBank').value = client.bank || '';
+  document.getElementById('clientAccountNumber').value = client.accountNumber || '';
+  document.getElementById('clientBranchNumber').value = client.branchNumber || '';
+  document.getElementById('clientNotes').value = client.notes || '';
+  openOverlay('overlayClient');
+}
+document.getElementById('saveClient').addEventListener('click', ()=>{
+  const firstName = document.getElementById('clientName').value.trim();
+  const surname = document.getElementById('clientSurname').value.trim();
+  if(!firstName || !surname){ showToast('Enter a name and surname'); return; }
+  const fullName = (firstName + ' ' + surname).trim();
+  const bank = document.getElementById('clientBank').value;
+  const accountNumber = document.getElementById('clientAccountNumber').value.trim();
+  const branchNumber = document.getElementById('clientBranchNumber').value.trim();
+  const phone = document.getElementById('clientPhone').value.trim();
+  const notes = document.getElementById('clientNotes').value.trim();
+  if(editingClientId){
+    const c = clientById(editingClientId);
+    if(c){
+      c.firstName = firstName; c.surname = surname; c.name = fullName;
+      c.phone = phone; c.bank = bank; c.accountNumber = accountNumber; c.branchNumber = branchNumber;
+      c.notes = notes;
+    }
+  } else {
+    clients.push({
+      id: uid(), name: fullName, firstName, surname,
+      phone, bank, accountNumber, branchNumber, notes,
+      createdAt: todayISO()
+    });
+  }
+  const wasEditingClientId = editingClientId;
+  persistClients();
+  closeOverlay('overlayClient');
+  showToast(wasEditingClientId ? 'Client updated' : 'Client added');
+  editingClientId = null;
+  renderClientsList();
+  if(document.getElementById('view-dashboard').classList.contains('active')) renderDashboard();
+  if(wasEditingClientId && document.getElementById('view-clientDetail').classList.contains('active')) openClientDetail(wasEditingClientId);
+});
+
+// ---------------- Repay sheet ----------------
+let repayingLoanId = null;
+function openRepaySheet(loan){
+  repayingLoanId = loan.id;
+  const c = clientById(loan.clientId);
+  let summary = `${c ? c.name : 'Client'} — ${R(loan.amount)} loan at ${loan.rate}%. Total due: ${R(loanTotalDue(loan))}.`;
+  if(loan.referrerId){
+    const r = referrerById(loan.referrerId);
+    summary += ` Marking this repaid will put ${R(loanCommission(loan))} commission owed to ${r ? r.name : 'the agent'}.`;
+  }
+  document.getElementById('repaySummary').textContent = summary;
+  document.getElementById('repayAmount').value = loanTotalDue(loan);
+  document.getElementById('repayDate').value = todayISO();
+  closeOverlay('overlayOverdue');
+  openOverlay('overlayRepay');
+}
+document.getElementById('confirmRepay').addEventListener('click', ()=>{
+  const loan = loans.find(l=>l.id===repayingLoanId);
+  if(!loan) return;
+  const amt = parseFloat(document.getElementById('repayAmount').value);
+  if(!amt || amt <= 0){ showToast('Enter an amount received'); return; }
+  loan.status = 'repaid';
+  loan.repaidAmount = amt;
+  loan.repaidDate = document.getElementById('repayDate').value || todayISO();
+  persistLoans();
+  closeOverlay('overlayRepay');
+  showToast('Marked repaid');
+  refreshCurrentView();
+});
+
+// ---------------- Overdue sheet ----------------
+let overdueLoanId = null;
+function openOverdueSheet(loan){
+  overdueLoanId = loan.id;
+  const c = clientById(loan.clientId);
+  document.getElementById('overdueSummary').textContent =
+    `${c ? c.name : 'Client'} — ${R(loan.amount)} loan was due ${fmtShortDate(loan.dueDate)}. Currently owes ${R(loanTotalDue(loan))}.`;
+  const penaltyBtn = document.getElementById('overduePenaltyBtn');
+  penaltyBtn.disabled = !settings.penalty;
+  penaltyBtn.textContent = settings.penalty ? `Apply ${R(settings.penalty)} penalty` : 'No penalty set';
+  penaltyBtn.style.opacity = settings.penalty ? '1' : '0.5';
+  openOverlay('overlayOverdue');
+}
+document.getElementById('overdueRepayBtn').addEventListener('click', ()=>{
+  const loan = loans.find(l=>l.id===overdueLoanId);
+  if(loan) openRepaySheet(loan);
+});
+document.getElementById('overduePenaltyBtn').addEventListener('click', ()=>{
+  if(!settings.penalty) return;
+  const loan = loans.find(l=>l.id===overdueLoanId);
+  if(!loan) return;
+  loan.penalty = (loan.penalty||0) + settings.penalty;
+  persistLoans();
+  closeOverlay('overlayOverdue');
+  showToast('Penalty applied');
+  refreshCurrentView();
+});
+
+function refreshCurrentView(){
+  ['dashboard','loans','clients','referrals'].forEach(v=>{
+    if(document.getElementById('view-'+v).classList.contains('active')){
+      if(v==='dashboard') renderDashboard();
+      if(v==='loans') renderLoansList();
+      if(v==='clients') renderClientsList();
+      if(v==='referrals') renderReferralsList();
+    }
+  });
+  if(document.getElementById('view-clientDetail').classList.contains('active') && overdueLoanId){
+    const loan = loans.find(l=>l.id===(overdueLoanId||repayingLoanId));
+    if(loan) openClientDetail(loan.clientId);
+  }
+  if(document.getElementById('view-referralDetail').classList.contains('active') && currentReferralDetailId){
+    openReferralDetail(currentReferralDetailId);
+  }
+}
+
+// ---------------- Settings ----------------
+function loadSettingsForm(){
+  document.getElementById('setCapMin').value = settings.capMin;
+  document.getElementById('setCapMax').value = settings.capMax;
+  document.getElementById('setIncMin').value = settings.incMin;
+  document.getElementById('setIncMax').value = settings.incMax;
+  document.getElementById('setRate').value = settings.rate;
+  document.getElementById('setMaxLoan').value = settings.maxLoan;
+  document.getElementById('setPenalty').value = settings.penalty || '';
+}
+document.getElementById('saveSettings').addEventListener('click', ()=>{
+  settings.capMin = parseFloat(document.getElementById('setCapMin').value) || 0;
+  settings.capMax = parseFloat(document.getElementById('setCapMax').value) || 0;
+  settings.incMin = parseFloat(document.getElementById('setIncMin').value) || 0;
+  settings.incMax = parseFloat(document.getElementById('setIncMax').value) || 0;
+  settings.rate = parseFloat(document.getElementById('setRate').value) || 0;
+  settings.maxLoan = parseFloat(document.getElementById('setMaxLoan').value) || 0;
+  const pVal = document.getElementById('setPenalty').value;
+  settings.penalty = pVal ? parseFloat(pVal) : null;
+  persistSettings();
+  showToast('Settings saved');
+});
+document.getElementById('exportData').addEventListener('click', ()=>{
+  const payload = { clients, loans, referrers, settings, exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'ledger-backup-'+todayISO()+'.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  showToast('Backup downloaded');
+});
+document.getElementById('wipeData').addEventListener('click', ()=>{
+  if(!confirm('This deletes every client, loan and agent from this device. Are you sure?')) return;
+  if(!confirm('Really sure? This cannot be undone.')) return;
+  clients = []; loans = []; referrers = [];
+  persistClients(); persistLoans(); persistReferrers();
+  showToast('All data erased');
+  refreshCurrentView();
+});
+
+// ---------------- Toast ----------------
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> t.classList.remove('show'), 2200);
+}
+
+// ---------------- Init ----------------
+loadSettingsForm();
+refreshMonthLabel();
+refreshOverdueStatuses();
+renderDashboard();
+
+})();
+</script>
+</body>
+</html>
